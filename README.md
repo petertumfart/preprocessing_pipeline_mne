@@ -13,5 +13,7 @@
 
 - Have fun playing around and investigating the data.
 
+## Additional information
 
+- This code was implemented and tested with python 3.10
 
