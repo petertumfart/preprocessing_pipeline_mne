@@ -7,11 +7,11 @@
 4. Download the data from here: ***tbd***
 
 ## How to use
-Run ```jupyter-lab``` or ```jupyter notebook```
+- Run ```jupyter-lab``` or ```jupyter notebook```
 
-Open [01_preprocessing_pipeline.ipynb](01_preprocessing_pipeline.ipynb) and modify the DATA_PATH to your local path.
+- Open [01_preprocessing_pipeline.ipynb](01_preprocessing_pipeline.ipynb) and modify the DATA_PATH to your local path.
 
-Have fun playing around and investigating the data.
+- Have fun playing around and investigating the data.
 
 
 
