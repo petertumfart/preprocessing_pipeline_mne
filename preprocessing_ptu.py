@@ -86,18 +86,21 @@ def filter_fifs(src, dst, sbj, paradigm='paradigm', store=True, show_fft=True):
     file = src + '/' + f_name
     raw = mne.io.read_raw(file, preload=True)
     
-    if show_fft:
-        plot_spectrum(raw, title='Raw EEG')
+    # if show_fft:
+    #     plot_spectrum(raw, title='Raw EEG')
 
     # Highpass filter:
-    raw = raw.copy().filter(l_freq=0.4, h_freq=None, picks=['eeg', 'eog'], method='iir')
-    if show_fft:
-        plot_spectrum(raw, title='Highpass filtered')
+    raw_highp = raw.copy().filter(l_freq=0.4, h_freq=None, picks=['eeg', 'eog'], method='iir')
+    # if show_fft:
+    #     plot_spectrum(raw, title='Highpass filtered')
 
     # Notch filter:
-    raw = raw.copy().notch_filter(freqs=[50], picks=['eeg', 'eog'], method='iir')
+    raw_notch = raw_highp.copy().notch_filter(freqs=[50], picks=['eeg', 'eog'], method='iir')
+    # if show_fft:
+    #     plot_spectrum(raw, title='Notch filtered')
+        
     if show_fft:
-        plot_spectrum(raw, title='Notch filtered')
+        plot_spectra(raw, raw_highp, raw_notch)
 
     if store:
         # Store the filtered file:
@@ -1254,7 +1257,46 @@ def plot_topomaps(src, dst, sbj_list, paradigm, split=[''], times=0.0, ncols=8, 
 
 # full_epochs_long.average().plot_topomap(times, ch_type='eeg')
     # full_epochs_short.average().plot_topomap(times, ch_type='eeg')
+def plot_spectra(raw, raw_highp, raw_notch):
+    N = raw.n_times
+    T = 1.0 / raw.info['sfreq']
+    y, times = raw[0, :]
+    yf = scipy.fftpack.fft(y)
+    xf = np.linspace(0.0, 1.0/(2.0*T), N//2)
+    y_plot = 2.0/N * np.abs(yf[:, :N//2])
+    plt.subplot(1, 3, 1)
+    plt.plot(xf, y_plot[0, :])
+    plt.ylabel('|fft(EEG)| (a.u.)')
+    plt.xlabel('Frequency (Hz)')
+    plt.title('Raw EEG')
     
+    N = raw_highp.n_times
+    T = 1.0 / raw_highp.info['sfreq']
+    y, times = raw_highp[0, :]
+    yf = scipy.fftpack.fft(y)
+    xf = np.linspace(0.0, 1.0/(2.0*T), N//2)
+    y_plot = 2.0/N * np.abs(yf[:, :N//2])
+    plt.subplot(1, 3, 2)
+    plt.plot(xf, y_plot[0, :])
+    plt.ylabel('|fft(EEG)| (a.u.)')
+    plt.xlabel('Frequency (Hz)')
+    plt.title('Highpass filtered')
+    
+    
+    N = raw_notch.n_times
+    T = 1.0 / raw_notch.info['sfreq']
+    y, times = raw_notch[0, :]
+    yf = scipy.fftpack.fft(y)
+    xf = np.linspace(0.0, 1.0/(2.0*T), N//2)
+    y_plot = 2.0/N * np.abs(yf[:, :N//2])
+    plt.subplot(1, 3, 3)
+    plt.plot(xf, y_plot[0, :])
+    plt.ylabel('|fft(EEG)| (a.u.)')
+    plt.xlabel('Frequency (Hz)')
+    plt.title('Notch filtered')
+    
+    plt.tight_layout()
+    plt.show()
     
 def plot_spectrum(eeg_struct, title=''):
     N = eeg_struct.n_times
