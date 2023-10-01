@@ -1,4 +1,11 @@
 # preprocessing_pipeline_mne
+This repository serves as a resource to perform preprocessing steps using the mne-python library.
+
+## You will learn how to..
+- ..load and convert EEG and Marker streams from xdf files.
+- ..handle multiple runs and blocks for multiple subjects.
+- ..apply filters, re-reference EEG, clean data (statistically and visually).
+- ..further use the pre-processed data.
 
 ## Installation
 1. Clone the repository
