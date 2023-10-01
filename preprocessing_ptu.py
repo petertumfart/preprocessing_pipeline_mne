@@ -1270,6 +1270,8 @@ def plot_spectra(raw, raw_highp, raw_notch):
     plt.xlabel('Frequency (Hz)')
     plt.title('Raw EEG')
     
+    track_max = y_plot.max()
+    
     N = raw_highp.n_times
     T = 1.0 / raw_highp.info['sfreq']
     y, times = raw_highp[0, :]
@@ -1282,6 +1284,7 @@ def plot_spectra(raw, raw_highp, raw_notch):
     plt.xlabel('Frequency (Hz)')
     plt.title('Highpass filtered')
     
+    track_max = max(track_max, y_plot.max())
     
     N = raw_notch.n_times
     T = 1.0 / raw_notch.info['sfreq']
@@ -1294,6 +1297,15 @@ def plot_spectra(raw, raw_highp, raw_notch):
     plt.ylabel('|fft(EEG)| (a.u.)')
     plt.xlabel('Frequency (Hz)')
     plt.title('Notch filtered')
+    
+    track_max = max(track_max, y_plot.max())
+    
+    #plt.subplot(1, 3, 1)
+    #plt.ylim([0, track_max])
+    #plt.subplot(1, 3, 2)
+    #plt.ylim([0, track_max])
+    #plt.subplot(1, 3, 3)
+    #plt.ylim([0, track_max])
     
     plt.tight_layout()
     plt.show()
