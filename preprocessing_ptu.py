@@ -9,6 +9,8 @@ from scipy.stats import t
 import scipy.io
 from scipy.stats import wilcoxon, ttest_ind
 import random
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from sklearn.model_selection import cross_val_score, LeaveOneOut, cross_val_predict
 
 
 def concat_fifs(src, dst, sbj, paradigm='paradigm', store=True):
@@ -1452,3 +1454,258 @@ def perform_permutation_test(cond_1, cond_2, n_perm=500):
 
     return p_actual
 
+def classify(src, dst, sbj, condition, n_timepoints=1, loo=True, shuffle=False):
+    # There can be only one file  with matching conditions since we are splitting in folders:
+    f_name = [f for f in os.listdir(src) if (sbj in f)][0]
+
+    file = src + '/' + f_name
+    epochs = mne.read_epochs(file, preload=True)
+
+    df_scores = _create_scores_df()
+
+    if 'cue' in src:
+        epoch_type = 'cue-aligned'
+    elif 'movement' in src:
+        epoch_type = 'movement_aligned'
+
+    markers = list(epochs.event_id.keys())
+    if condition == 'distance':
+        longs = [m for m in markers if '-l' in m]
+        shorts = [m for m in markers if '-s' in m]
+        epochs_long = epochs[longs]
+        epochs_short = epochs[shorts]
+
+        # Equalize epochs:
+        n_long = len(epochs_long)
+        n_short = len(epochs_short)
+
+        min_len = min(n_long, n_short)
+
+        ids_long = sorted(random.sample(range(n_long), k=min_len))
+        ids_short = sorted(random.sample(range(n_short), k=min_len))
+
+        epochs_long = epochs_long[ids_long]
+        epochs_short = epochs_short[ids_short]
+
+        # Create data matrix X (epochs x channels x timepoints) and label vector y (epochs x 1):
+        X = np.concatenate([epochs_long.get_data(), epochs_short.get_data()])
+        y = np.concatenate([np.zeros(len(epochs_long)), np.ones(len(epochs_short))])
+
+
+    elif condition == 'direction':
+        # Get condition:
+        ups = [m for m in markers if 'BT' in m]
+        downs = [m for m in markers if 'TT' in m]
+        lefts = [m for m in markers if 'RT' in m]
+        rights = [m for m in markers if 'LT' in m]
+        epochs_up = epochs[ups]
+        epochs_down = epochs[downs]
+        epochs_right = epochs[rights]
+        epochs_left = epochs[lefts]
+
+        # Equalize epochs:
+        n_up = len(epochs_up)
+        n_down = len(epochs_down)
+        n_left = len(epochs_left)
+        n_right = len(epochs_right)
+
+        min_len = min(n_up, n_down, n_left, n_right)
+
+        ids_top = sorted(random.sample(range(n_up), k=min_len))
+        ids_bot = sorted(random.sample(range(n_down), k=min_len))
+        ids_left = sorted(random.sample(range(n_left), k=min_len))
+        ids_right = sorted(random.sample(range(n_right), k=min_len))
+
+        epochs_up = epochs_up[ids_top]
+        epochs_down = epochs_down[ids_bot]
+        epochs_left = epochs_left[ids_left]
+        epochs_right = epochs_right[ids_right]
+
+        # Create data matrix X (epochs x channels x timepoints) and label vector y (epochs x 1):
+        X = np.concatenate([epochs_up.get_data(), epochs_down.get_data(), epochs_right.get_data(), epochs_left.get_data()])
+        y = np.concatenate([np.zeros(len(epochs_up)), np.ones(len(epochs_down)), 2*np.ones(len(epochs_right)), 3*np.ones(len(epochs_left))])
+
+    elif condition == 'direction_short':
+        ups = [m for m in markers if 'BTT-s' in m]
+        downs = [m for m in markers if 'TTB-s' in m]
+        lefts = [m for m in markers if 'RTL-s' in m]
+        rights = [m for m in markers if 'LTR-s' in m]
+        epochs_up = epochs[ups]
+        epochs_down = epochs[downs]
+        epochs_right = epochs[rights]
+        epochs_left = epochs[lefts]
+
+        # Equalize epochs:
+        n_up = len(epochs_up)
+        n_down = len(epochs_down)
+        n_left = len(epochs_left)
+        n_right = len(epochs_right)
+
+        min_len = min(n_up, n_down, n_left, n_right)
+
+        ids_top = sorted(random.sample(range(n_up), k=min_len))
+        ids_bot = sorted(random.sample(range(n_down), k=min_len))
+        ids_left = sorted(random.sample(range(n_left), k=min_len))
+        ids_right = sorted(random.sample(range(n_right), k=min_len))
+
+        epochs_up = epochs_up[ids_top]
+        epochs_down = epochs_down[ids_bot]
+        epochs_left = epochs_left[ids_left]
+        epochs_right = epochs_right[ids_right]
+
+        # Create data matrix X (epochs x channels x timepoints) and label vector y (epochs x 1):
+        X = np.concatenate([epochs_up.get_data(), epochs_down.get_data(), epochs_right.get_data(), epochs_left.get_data()])
+        y = np.concatenate([np.zeros(len(epochs_up)), np.ones(len(epochs_down)), 2*np.ones(len(epochs_right)), 3*np.ones(len(epochs_left))])
+
+    elif condition == 'direction_long':
+        ups = [m for m in markers if 'BTT-l' in m]
+        downs = [m for m in markers if 'TTB-l' in m]
+        lefts = [m for m in markers if 'RTL-l' in m]
+        rights = [m for m in markers if 'LTR-l' in m]
+        epochs_up = epochs[ups]
+        epochs_down = epochs[downs]
+        epochs_right = epochs[rights]
+        epochs_left = epochs[lefts]
+
+        # Equalize epochs:
+        n_up = len(epochs_up)
+        n_down = len(epochs_down)
+        n_left = len(epochs_left)
+        n_right = len(epochs_right)
+
+        min_len = min(n_up, n_down, n_left, n_right)
+
+        ids_top = sorted(random.sample(range(n_up), k=min_len))
+        ids_bot = sorted(random.sample(range(n_down), k=min_len))
+        ids_left = sorted(random.sample(range(n_left), k=min_len))
+        ids_right = sorted(random.sample(range(n_right), k=min_len))
+
+        epochs_up = epochs_up[ids_top]
+        epochs_down = epochs_down[ids_bot]
+        epochs_left = epochs_left[ids_left]
+        epochs_right = epochs_right[ids_right]
+
+        # Create data matrix X (epochs x channels x timepoints) and label vector y (epochs x 1):
+        X = np.concatenate([epochs_up.get_data(), epochs_down.get_data(), epochs_right.get_data(), epochs_left.get_data()])
+        y = np.concatenate([np.zeros(len(epochs_up)), np.ones(len(epochs_down)), 2*np.ones(len(epochs_right)), 3*np.ones(len(epochs_left))])
+
+    elif condition == 'position':
+        tops = [m for m in markers if 'BTT-l' in m]
+        bottoms = [m for m in markers if 'TTB-l' in m]
+        lefts = [m for m in markers if 'RTL-l' in m]
+        rights = [m for m in markers if 'LTR-l' in m]
+        centers = [m for m in markers if '-s' in m]
+        epochs_top= epochs[tops]
+        epochs_bottom = epochs[bottoms]
+        epochs_right = epochs[rights]
+        epochs_left = epochs[lefts]
+        epochs_center = epochs[centers]
+
+        # Equalize epochs:
+        n_top = len(epochs_top)
+        n_bot = len(epochs_bottom)
+        n_left = len(epochs_left)
+        n_right = len(epochs_right)
+        n_center = len(epochs_center)
+
+        min_len = min(n_top, n_bot, n_left, n_right, n_center)
+
+        ids_top = sorted(random.sample(range(n_top), k=min_len))
+        ids_bot = sorted(random.sample(range(n_bot), k=min_len))
+        ids_left = sorted(random.sample(range(n_left), k=min_len))
+        ids_right = sorted(random.sample(range(n_right), k=min_len))
+        ids_center = sorted(random.sample(range(n_center), k=min_len))
+
+        epochs_top = epochs_top[ids_top]
+        epochs_bottom = epochs_bottom[ids_bot]
+        epochs_left = epochs_left[ids_left]
+        epochs_right = epochs_right[ids_right]
+        epochs_center = epochs_center[ids_center]
+
+        # Create data matrix X (epochs x channels x timepoints) and label vector y (epochs x 1):
+        X = np.concatenate([epochs_top.get_data(), epochs_bottom.get_data(), epochs_right.get_data(), epochs_left.get_data(), epochs_center.get_data()])
+        y = np.concatenate([np.zeros(len(epochs_top)), np.ones(len(epochs_bottom)), 2*np.ones(len(epochs_right)), 3*np.ones(len(epochs_left)), 4*np.ones(len(epochs_center))])
+
+
+
+
+    clf = LinearDiscriminantAnalysis(solver='lsqr', shrinkage='auto')
+    n_len = X.shape[2] - n_timepoints + 1
+    for tp in range(n_timepoints, X.shape[2]+1):
+        # Shuffle labels for chance-level estimation per subject:
+        if shuffle:
+            y = np.random.permutation(y)
+
+        x = X[:,:,tp-n_timepoints:tp]
+        x = np.reshape(x, (x.shape[0], x.shape[1]*x.shape[2]))
+
+        if loo:
+            scores = cross_val_score(clf, x, y, cv=LeaveOneOut(), n_jobs=-1)
+        else:
+            scores = cross_val_score(clf, x, y, cv=5, n_jobs=-1)
+
+        # Add row to the dataframe:
+        row_to_add = {'Timepoint': (tp-1)/10 + epochs.tmin, 'Accuracy': scores.mean(), 'Subject': sbj,
+                      'N_timepoints': n_timepoints, 'Type': epoch_type, 'Init_marker': [markers],
+                      't_min': epochs.tmin, 't_max': epochs.tmax, 'epoch_info': [epochs.info],
+                      'Date':datetime.now().strftime('%Y-%m-%d'), 'Time': datetime.now().strftime('%H:%M:%S'),
+                      'Condition': condition}
+        df_scores = pd.concat([df_scores, pd.DataFrame(row_to_add)], ignore_index=True)
+
+        if tp != n_len:
+            pass
+            #print(f'Measuring timestamp {tp}/{n_len}, shape: {x.shape}', end='\r')
+        else:
+            pass
+            #print(f'Measuring timestamp {tp}/{n_len}')
+
+    #print()
+
+    # Add mean of scores as subject: Mean:
+    # row_to_add = {'Timepoint': (np.arange(n_timepoints-1, X.shape[2])/10 + epochs.tmin).tolist(),
+    #               'Accuracy': df_scores.groupby('Timepoint')['Accuracy'].mean().to_list(),
+    #               'Subject': ['Mean']*n_len, 'N_timepoints': [n_timepoints]*n_len, 'Type': [epoch_type]*n_len,
+    #               'Init_marker': [markers]*n_len, 't_min': [epochs.tmin]*n_len, 't_max': [epochs.tmax]*n_len,
+    #               'epoch_info': [[epochs.info]]*n_len, 'Date':[datetime.now().strftime('%Y-%m-%d')]*n_len,
+    #               'Time': [datetime.now().strftime('%H:%M:%S')]*n_len, 'Condition': [condition]*n_len]}
+
+    # df_scores = pd.concat([df_scores, pd.DataFrame(row_to_add)], ignore_index=True)
+
+    # Store dataframe to full classification dataframe:
+    if loo and not shuffle:
+        _store_scores_df(df_scores, csv_name=f'{dst}/classification_df.csv')
+    elif not loo and not shuffle:
+        _store_scores_df(df_scores, csv_name=f'{dst}/classification_df_5_fold.csv')
+    elif shuffle:
+        _store_scores_df(df_scores, csv_name=f'{dst}/classification_chance_level.csv')
+
+def _store_scores_df(df_to_append, csv_name='classification_df.csv'):
+    # Check if dataframe exists and if not, create it:
+    if not os.path.exists(csv_name):
+        df_to_append.to_csv(csv_name)
+        return df_to_append
+    else:
+        df = pd.read_csv(csv_name, index_col=0)
+        df = pd.concat([df, df_to_append], ignore_index=True)
+        df.to_csv(csv_name)
+        return df
+    
+def _create_scores_df():
+    # Create dataframe for storing all the classification data + information:
+    cols = ['Timepoint',   # Timepoint of classification accuracy
+            'Accuracy',    # Classification accuracy
+            'Subject',     # Subject ID
+            'N_timepoints',     # Number of timepoints used for classification
+            'Type',        # Cue-aligned or Movement onset-aligned
+            'Init_marker', # Marker(s) used for epoching
+            't_min',
+            't_max',
+            'epoch_info',
+            'Date',
+            'Time',
+            'Condition']
+
+    df = pd.DataFrame(columns=cols)
+
+    return df
+    
