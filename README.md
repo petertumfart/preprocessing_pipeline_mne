@@ -11,7 +11,7 @@ This repository serves as a resource to perform preprocessing steps using the mn
 1. Clone the repository
 2. ```pip install -r requirements.txt```
 3. ```pip install "mne>=1.0" matplotlib mne-qt-browser```
-4. Download the data from here: ***tbd***
+4. Download the data from [here](https://drive.google.com/drive/folders/1XlcYQYSzwmCduZ3d5cqIZoHv2uNX7J0x?usp=sharing)
 
 ## How to use
 - Run ```jupyter-lab``` or ```jupyter notebook```
